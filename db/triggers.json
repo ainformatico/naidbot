@@ -1,0 +1,17 @@
+{"user" : [] , "group" : ["admin" , "developer" , "user"] , "name" : "mapa de" , "num" : 2 , "script" : "scripts/maps.js" , "description" : "Enlace a google maps con el lugar indicado" }
+{"user" : [] , "group" : ["admin"] , "name" : "users" , "num" : 1 ,"script" : "scripts/users.sh","description" : "list all connected users"}
+{"user" : [] , "group" : ["admin"] , "name" : "uptime","num" : 1,"script" : "scripts/uptime.sh","description" : "print the uptime"}
+{"user" : [] , "group" : ["admin"] , "name" : "top process","num" : 2,"script" : "scripts/top_process.sh","description" : "list all high CPU usage"}
+{"user" : [] , "group" : ["admin"] , "name" : "stop ssh","num" : 2,"script" : "scripts/ssh_stop.sh","description" : "stop ssh"}
+{"user" : [] , "group" : ["admin"] , "name" : "start ssh","num" : 2,"script" : "scripts/ssh_start.sh","description" : "start ssh"}
+{"user" : [] , "group" : ["admin"] , "name" : "stop service","num" : 2,"script" : "scripts/service_stop.sh","description" : "stop a service"}
+{"user" : [] , "group" : ["admin"] , "name" : "status service","num" : 2,"script" : "scripts/service_status.sh","description" : "status of service"}
+{"user" : [] , "group" : ["admin"] , "name" : "start service","num" : 2,"script" : "scripts/service_start.sh","description" : "start a service"}
+{"user" : [] , "group" : ["admin"] , "name" : "restart service","num" : 2,"script" : "scripts/service_restart.sh","description" : "restart a service"}
+{"user" : [] , "group" : ["admin"] , "name" : "hello ruby","num" : 2,"script" : "scripts/ruby.rb","description" : "ruby example"}
+{"user" : [] , "group" : ["admin"] , "name" : "hello python","num" : 2,"script" : "scripts/python.py","description" : "python example"}
+{"user" : [] , "group" : ["admin"] , "name" : "hello php","num" : 2,"script" : "scripts/php.php","description" : "php example"}
+{"user" : [] , "group" : ["admin"] , "name" : "ping","num" : 1,"script" : "scripts/ping.sh","description" : "ping a host"}
+{"user" : [] , "group" : ["admin"] , "name" : "log apache","num" : 2,"script" : "scripts/apache_log.sh","description" : "print the apache log"}
+{"user" : [] , "group" : ["admin"] , "name" : "hello node","num" : 2,"script" : "scripts/node.js","description" : "node exemple"}
+

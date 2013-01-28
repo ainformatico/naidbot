@@ -1,0 +1,12 @@
+#general
+*.log
+#docs
+output.md
+#node
+node
+node_modules
+#project
+_config.js
+*.css
+#mac
+.DS_Store*

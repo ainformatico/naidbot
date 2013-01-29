@@ -4,7 +4,9 @@ var xmpp       = require('node-xmpp'),
     parser     = require('./parser'),
     scripts    = require('./scripts'),
     monguitron = require('./monguitron'),
-    i18n       = require('../i18n/en');
+    i18n       = require('../i18n/en'),
+    sandbox    = require('./sandbox'),
+    eventer    = require('./eventer');
 
 /**
  * Simple XMPP bot
@@ -28,6 +30,14 @@ var Naidbot = function(opts)
     success : function()
     {
       _this.connect(); //connect
+      _this._eventer.on('connection:presence', function()
+      {
+        //TODO: just for testing, remove this in the future
+        _this._sandbox.register('jid', function()
+        {
+          return _this._bot.username;
+        });
+      });
       _this._set_socket(); //create the socket
       _this._load_commands( //load admin commands
       {
@@ -46,6 +56,10 @@ var Naidbot = function(opts)
         path     :    __dirname + '/../fallback/',
         commands : _this._fallback_commands,
         triggers : _this._all_fallback_commands
+      });
+      _this._load_plugins( //load plugins
+      {
+        path : __dirname + '/../plugins/'
       });
     },
     error : function()
@@ -336,6 +350,7 @@ Naidbot.prototype =
           return;
         }
         _this._bot.username = new xmpp.JID(stanza.attrs.to);
+        _this._eventer.emit('connection:presence');
       }
       if(stanza.attrs.type && stanza.attrs.type.match(/groupchat|direct/))
       {
@@ -444,6 +459,7 @@ Naidbot.prototype =
           }
         )
       );
+      _this._eventer.emit('connection:online');
     });
   },
   /**
@@ -960,7 +976,9 @@ Naidbot.prototype =
    * */
   chat : function(contact, message)
   {
-    this._send
+    var _this = this;
+    _this._eventer.emit('chat:message', message);
+    _this._send
     (
       new xmpp.Element('message',
       {
@@ -1205,12 +1223,57 @@ Naidbot.prototype =
    * */
   _fallback_commands : [],
   /**
+   * Event holder
+   *
+   * @private
+   *
+   * */
+  _eventer : new eventer.Eventer(),
+  /**
+   * Sandbox
+   *
+   * @private
+   *
+   * */
+  _sandbox : sandbox,
+  /**
+   * Save all the plugins
+   *
+   * @private
+   *
+   * */
+  _plugins : {},
+  /**
    * Fallback triggers, just to improve the trigger search
    *
    * @private
    *
    * */
   _all_fallback_commands : [],
+  /**
+   * Load plugins
+   *
+   * @private
+   *
+   * @param {object} opts object options
+   *
+   * @param {array} opts.commands where to save the commands
+   *
+   * @param {array} opts.triggers where to save the triggers
+   *
+   * */
+  _load_plugins : function(opts)
+  {
+    var _this = this,
+        files = fs.readdirSync(opts.path); //load all the files
+    for(var i = 0, l_files = files.length; i < l_files; i++)
+    {
+      var file    = files[i],
+          command = require(opts.path + file);
+      _this._plugins[command.name] = command; //save the plugin
+      command.action.apply(_this._sandbox._data, [_this._eventer]); //init the plugin
+    }
+  },
   /**
    * Load commands from dir
    *

@@ -1307,10 +1307,11 @@ Naidbot.prototype =
         files = fs.readdirSync(opts.path); //load all the files
     for(var i = 0, l_files = files.length; i < l_files; i++)
     {
-      var file    = files[i],
-          command = require(opts.path + file);
+      var file       = files[i],
+          command    = require(opts.path + file),
+          is_enabled = (typeof command.enabled === 'undefined') ? true : command.enabled; //assume true if not defined
       _this._plugins[command.name] = command; //save the plugin
-      command.action.apply(_this._sandbox._data, [_this._eventer]); //init the plugin
+      is_enabled && command.action.apply(_this._sandbox._data, [_this._eventer]); //init the plugin if enabled
     }
   },
   /**

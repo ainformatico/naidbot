@@ -46,6 +46,16 @@ var Naidbot = function(opts)
       {
         _this._message = null;
       });
+
+      /**
+       * Change the status
+       *
+       * */
+      _this._sandbox.register('status.change', function(status, message)
+      {
+        _this.set_status(status, message);
+      });
+
       _this.connect(); //connect
       _this._eventer.on('connection:presence', function()
       {

@@ -552,7 +552,7 @@ Naidbot.prototype =
         .c('status')
         .t(_this._config.bot.message)
     );
-    this.chat(_this._config.security.main_admin, 'Recived UNBLOCK request for ' + contact);
+    _this.chat(_this._config.security.main_admin, 'Recived UNBLOCK request for ' + contact);
   },
   /**
    * Block a contact
@@ -603,8 +603,8 @@ Naidbot.prototype =
         to : contact
       })
     );
-    remove && this.delete_contact(contact);
-    this.chat(_this._config.security.main_admin, 'Recived BLOCK request for ' + contact);
+    remove && _this.delete_contact(contact);
+    _this.chat(_this._config.security.main_admin, 'Recived BLOCK request for ' + contact);
   },
   change_trigger : function(opts)
   {
@@ -1096,7 +1096,7 @@ Naidbot.prototype =
         .c('status')
         .t(message)
     );
-    this.chat(_this._config.security.main_admin, 'Recived SET status to: ' + stat + '(' + message + ')');
+    _this.chat(_this._config.security.main_admin, 'Recived SET status to: ' + stat + '(' + message + ')');
   },
   /**
    * Get the command

@@ -1,7 +1,7 @@
 var plugin =
 {
   name        : 'Work mode',
-  description : 'Set bot as bussy.',
+  description : 'Set bot as busy.',
   version     : '1.0',
   enabled     : false,
   action      : function(naidbot)

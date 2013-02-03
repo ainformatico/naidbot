@@ -36,7 +36,7 @@ var Sandbox = function()
     if(utils.trim(name).length && typeof f === 'function')
     {
       utils.log("registering for sandbox: " + name);
-      this._data[name] = f;
+      utils.namespace(this._data, name, f);
     }
   }
 }

@@ -427,6 +427,26 @@ utils =
       }
       obj = obj[parts[i]];
     }
+  },
+
+  /**
+   * Load files from dir
+   *
+   * @param {string} dir dir
+   *
+   * @param {function} callback callback
+   *
+   * */
+  load_files : function(dir, callback)
+  {
+    var _this = this,
+        files = fs.readdirSync(dir); //load all the files
+    for(var i = 0, l_files = files.length; i < l_files; i++)
+    {
+      var file    = files[i],
+          command = require(dir + file);
+      callback.apply({}, [command, file]);
+    }
   }
 },
 logger = utils.create_log();

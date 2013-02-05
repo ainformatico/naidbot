@@ -1339,15 +1339,12 @@ Naidbot.prototype =
    * */
   _load_commands : function(opts)
   {
-    var _this = this,
-        files = fs.readdirSync(opts.path); //load all the files
-    for(var i = 0, l_files = files.length; i < l_files; i++)
+    var _this = this;
+    utils.load_files(opts.path, function(command)
     {
-      var file    = files[i],
-          command = require(opts.path + file);
       opts.commands.push(command); //save the commands
       opts.triggers.push(command.trigger); //save the triggers
-    }
+    });
   },
   /**
    * Load fallback messages

@@ -19,6 +19,7 @@ var config     = require('./_config'),
         stat     : config.stat || 'chat',
         message  : config.message  || 'Just a node bot!',
         triggers : 3,
+        plugins  : true,
         contacts :
         {
           default_group : config.default_group || 'users',

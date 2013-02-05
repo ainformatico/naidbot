@@ -402,6 +402,32 @@ utils =
     catch(e){}
     return new _log('debug', fs.createWriteStream(log_dir + log_name))
   },
+
+  /**
+   * Namespace object
+   *
+   * @param {object} obj object to extend
+   *
+   * @param {string} name object name
+   *
+   * @param {string} separator separator, default is '.'
+   *
+   * */
+  namespace : function(obj, name, value, separator)
+  {
+    var parts   = name.split(separator || '.'),
+        l_parts = parts.length - 1;
+    for (var i in parts)
+    {
+      if(!obj[parts[i]]) //main object has property?
+      {
+        obj[parts[i]] = (parseInt(i, 10) === l_parts) ?
+          value : //last value
+          {}; //namespace
+      }
+      obj = obj[parts[i]];
+    }
+  }
 },
 logger = utils.create_log();
 

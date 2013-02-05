@@ -4,7 +4,9 @@ var xmpp       = require('node-xmpp'),
     parser     = require('./parser'),
     scripts    = require('./scripts'),
     monguitron = require('./monguitron'),
-    i18n       = require('../i18n/en');
+    i18n       = require('../i18n/en'),
+    sandbox    = require('./sandbox'),
+    eventer    = require('./eventer');
 
 /**
  * Simple XMPP bot
@@ -27,7 +29,42 @@ var Naidbot = function(opts)
   {
     success : function()
     {
+      /**
+       * Filter the message
+       *
+       * */
+      _this._sandbox.register('message.filter', function(message)
+      {
+        _this._message = message;
+      });
+
+      /**
+       * Prevent sending the message
+       *
+       * */
+      _this._sandbox.register('message.prevent', function()
+      {
+        _this._message = null;
+      });
+
+      /**
+       * Change the status
+       *
+       * */
+      _this._sandbox.register('status.change', function(status, message)
+      {
+        _this.set_status(status, message);
+      });
+
       _this.connect(); //connect
+      _this._eventer.on('connection:presence', function()
+      {
+        //TODO: just for testing, remove this in the future
+        _this._sandbox.register('jid', function()
+        {
+          return _this._bot.username;
+        });
+      });
       _this._set_socket(); //create the socket
       _this._load_commands( //load admin commands
       {
@@ -46,6 +83,10 @@ var Naidbot = function(opts)
         path     :    __dirname + '/../fallback/',
         commands : _this._fallback_commands,
         triggers : _this._all_fallback_commands
+      });
+      _this._load_plugins( //load plugins
+      {
+        path : __dirname + '/../plugins/'
       });
     },
     error : function()
@@ -308,10 +349,12 @@ Naidbot.prototype =
       {
         case 'subscribed':
           utils.log(utils.interpolate(i18n.contacts.adding, {user : stanza.attr.from}));
+          _this._eventer.emit('contact:subscribed', {contact: stanza.attr.from});
         break;
         case 'subscribe': //want access
           utils.log(utils.interpolate(i18n.contacts.has_subscribed, {user : stanza.attrs.from}));
           _this.chat(_this._config.security.main_admin, utils.interpolate(i18n.contacts.want_access, {user : stanza.attrs.from})); //notify
+          _this._eventer.emit('contact:subscribe', {contact: stanza.attr.from});
         break;
         case 'result':
           utils.debug('>>>>>');
@@ -336,6 +379,7 @@ Naidbot.prototype =
           return;
         }
         _this._bot.username = new xmpp.JID(stanza.attrs.to);
+        _this._eventer.emit('connection:presence');
       }
       if(stanza.attrs.type && stanza.attrs.type.match(/groupchat|direct/))
       {
@@ -349,22 +393,26 @@ Naidbot.prototype =
         {
           if(stanza.children[0].name == 'composing') //prevent 'composing' status
           {
+            _this._eventer.emit('chat:composing', stanza);
             return;
           }
           utils.debug('=====================');
           utils.debug(stanza);
           utils.debug('=====================');
-          var text = stanza.getChild('body'),
+          var text = stanza.getChild('body') || '',
               user = stanza.attrs.from,
               num_triggers = _this._config.bot.triggers,
               common       = false, //common command
               admin        = false; //admin command
           if(!text) //prevent empty messages
           {
+            _this._eventer.emit('chat:received:empty', {from : utils.get_user(user), message : text});
             return;
           }
           text = text.getText(); //get the message text
           utils.log(utils.interpolate(i18n.chat.message_reicived, {user: utils.get_user(stanza.attrs.from), text : text}));
+          _this._eventer.emit('chat:received', {from : utils.get_user(user), message : text});
+          _this._eventer.emit('command:before:parse', {from : utils.get_user(user), command : text});
           if(_this._is_admin(user))
           {
             admin = _this._exec_admin(
@@ -444,6 +492,7 @@ Naidbot.prototype =
           }
         )
       );
+      _this._eventer.emit('connection:online');
     });
   },
   /**
@@ -503,7 +552,7 @@ Naidbot.prototype =
         .c('status')
         .t(_this._config.bot.message)
     );
-    this.chat(_this._config.security.main_admin, 'Recived UNBLOCK request for ' + contact);
+    _this.chat(_this._config.security.main_admin, 'Recived UNBLOCK request for ' + contact);
   },
   /**
    * Block a contact
@@ -554,8 +603,8 @@ Naidbot.prototype =
         to : contact
       })
     );
-    remove && this.delete_contact(contact);
-    this.chat(_this._config.security.main_admin, 'Recived BLOCK request for ' + contact);
+    remove && _this.delete_contact(contact);
+    _this.chat(_this._config.security.main_admin, 'Recived BLOCK request for ' + contact);
   },
   change_trigger : function(opts)
   {
@@ -960,13 +1009,16 @@ Naidbot.prototype =
    * */
   chat : function(contact, message)
   {
-    this._send
+    var _this = this;
+    _this._message = message;
+    _this._eventer.emit('chat:send', {to : contact, message : message});
+    _this._send
     (
       new xmpp.Element('message',
       {
         to : contact,
         type : 'chat'
-      }).c('body').t(message)
+      }).c('body').t(_this._message)
     );
   },
   /**
@@ -1012,6 +1064,7 @@ Naidbot.prototype =
     var _this = this;
     _this.chat(_this._config.security.main_admin, 'Recived LOGOUT');
     utils.log(i18n.stat.logging_out);
+    _this._eventer.emit('connection:offline');
     _this._send
     (
       new xmpp.Element('presence',
@@ -1043,7 +1096,7 @@ Naidbot.prototype =
         .c('status')
         .t(message)
     );
-    this.chat(_this._config.security.main_admin, 'Recived SET status to: ' + stat + '(' + message + ')');
+    _this.chat(_this._config.security.main_admin, 'Recived SET status to: ' + stat + '(' + message + ')');
   },
   /**
    * Get the command
@@ -1062,6 +1115,7 @@ Naidbot.prototype =
   _get_command : function(opts)
   {
     var _this = this;
+    _this._eventer.emit('command:before:parse:default', {from : utils.get_user(opts.user), command : opts.trigger});
     monguitron.triggers(
     {
       user         : utils.get_user(opts.user),
@@ -1089,30 +1143,36 @@ Naidbot.prototype =
                     {
                       if(output)
                       {
+                        _this._eventer.emit('command:parse:default', {from : utils.get_user(opts.user), cmd : command});
                         _this.chat(opts.user, output);
                       }
                       else
                       {
+                        _this._eventer.emit('command:parse:default:error:security', {from : utils.get_user(opts.user), cmd : command});
                         _this._notify({user : opts.user, message : utils.interpolate(i18n.error.command.security, {file : file})});
                       }
                     },
                     no_exec : function(file)
                     {
+                      _this._eventer.emit('command:parse:default:error:exec', {from : utils.get_user(opts.user), cmd : command, file : file});
                       _this._notify({user : opts.user, message : utils.interpolate(i18n.error.file.no_exec, {file : file})});
                     },
                     script_error : function(error)
                     {
                       if(!error)
                       {
+                        _this._eventer.emit('command:parse:default:error:security', {from : utils.get_user(opts.user), cmd : command});
                         _this._notify({user : opts.user, message : i18n.error.command.security});
                       }
                       else
                       {
+                        _this._eventer.emit('command:parse:default:error', {from : utils.get_user(opts.user), cmd : command, error : error, file : data});
                         _this._notify({user : opts.user, message : utils.interpolate(i18n.error.command.script_error, {script : data, error : error})});
                       }
                     },
                     error : function(message)
                     {
+                      _this._eventer.emit('command:parse:default:error', {from : utils.get_user(opts.user), cmd : command, file : data});
                       _this._notify({user : opts.user, message : utils.interpolate(message, {file : data})});
                     }
                   });
@@ -1205,12 +1265,68 @@ Naidbot.prototype =
    * */
   _fallback_commands : [],
   /**
+   * Event holder
+   *
+   * @private
+   *
+   * */
+  _eventer : new eventer.Eventer(),
+  /**
+   * Hold the message to send
+   *
+   * @private
+   *
+   * */
+  _message : '',
+  /**
+   * Sandbox
+   *
+   * @private
+   *
+   * */
+  _sandbox : sandbox,
+  /**
+   * Save all the plugins
+   *
+   * @private
+   *
+   * */
+  _plugins : {},
+  /**
    * Fallback triggers, just to improve the trigger search
    *
    * @private
    *
    * */
   _all_fallback_commands : [],
+  /**
+   * Load plugins
+   *
+   * @private
+   *
+   * @param {object} opts object options
+   *
+   * @param {array} opts.commands where to save the commands
+   *
+   * @param {array} opts.triggers where to save the triggers
+   *
+   * */
+  _load_plugins : function(opts)
+  {
+    var _this = this;
+    if(_this._config.bot.plugins) //only if enabled
+    {
+      var files = fs.readdirSync(opts.path); //load all the files
+      for(var i = 0, l_files = files.length; i < l_files; i++)
+      {
+        var file       = files[i],
+            command    = require(opts.path + file),
+            is_enabled = (typeof command.enabled === 'undefined') ? true : command.enabled; //assume true if not defined
+        _this._plugins[command.name] = command; //save the plugin
+        is_enabled && command.action.apply(_this._sandbox._data, [_this._eventer]); //init the plugin if enabled
+      }
+    }
+  },
   /**
    * Load commands from dir
    *
@@ -1265,6 +1381,7 @@ Naidbot.prototype =
             found = true;
           }
         };
+    _this._eventer.emit('command:before:parse:fallback', {from : utils.get_user(opts.user), command : opts.message});
     for(var i = 0, l_commands = _this._all_fallback_commands.length; i < l_commands; i++)
     {
       var command  = _this._all_fallback_commands[i],
@@ -1274,6 +1391,7 @@ Naidbot.prototype =
         for(var j = 0, l_triggers = command.length; j < l_triggers; j++)
         {
           var current = command[j];
+          _this._eventer.emit('command:parse:fallback', {from : utils.get_user(opts.user), command : current});
           match(
           {
             cmd      : opts.message,
@@ -1311,6 +1429,7 @@ Naidbot.prototype =
     var _this = this,
         user  = opts.user,
         cmd   = parser.get_command(opts.command, _this._all_common_commands, _this._config.bot.triggers);
+    _this._eventer.emit('command:before:parse:common', {from : utils.get_user(user), command : opts.command});
     if(cmd)
     {
       for(var i = 0, l_commands = _this._common_commands.length; i < l_commands; i++)
@@ -1318,6 +1437,7 @@ Naidbot.prototype =
         var command = _this._common_commands[i];
         if(command.trigger === cmd.command)
         {
+          _this._eventer.emit('command:parse:common', {from : utils.get_user(user), cmd : cmd});
           command.action(
           {
             user    : user,
@@ -1390,6 +1510,7 @@ Naidbot.prototype =
   {
     var _this = this,
         cmd   = parser.get_command(opts.command, _this._all_admin_commands, _this._config.bot.triggers);
+    _this._eventer.emit('command:before:parse:admin', {from : utils.get_user(opts.user), command : opts.command});
     if(cmd)
     {
       for(var i = 0, l_commands = _this._admin_commands.length; i < l_commands; i++)
@@ -1406,10 +1527,12 @@ Naidbot.prototype =
               naidbot : _this
             }
           ]);
+          _this._eventer.emit('command:parse:admin', {from : utils.get_user(opts.user), cmd : cmd});
           return true;
         }
       }
     }
+    _this._eventer.emit('command:parse:not:admin', {from : utils.get_user(opts.user), command : opts.command});
   },
   /**
   * Save all the intervals

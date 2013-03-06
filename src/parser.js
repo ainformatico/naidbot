@@ -27,6 +27,7 @@ var utils  = require('../src/utils'),
       * */
       get_command: function(command, commands, level)
       {
+        //TODO: new param to set case-sensitive
         if(level === 0) //prevent extra loops as we did not found nothing
         {
           return false;
